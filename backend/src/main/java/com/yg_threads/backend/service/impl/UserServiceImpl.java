@@ -1,8 +1,6 @@
 package com.yg_threads.backend.service.impl;
 
-import com.yg_threads.backend.dto.JwtResponseDTO;
-import com.yg_threads.backend.dto.LoginRequestDTO;
-import com.yg_threads.backend.dto.RegisterRequestDTO;
+import com.yg_threads.backend.dto.*;
 import com.yg_threads.backend.entity.Role;
 import com.yg_threads.backend.entity.User;
 import com.yg_threads.backend.exception.UserException;
@@ -37,7 +35,6 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private AuthenticationManager authenticationManager;
 
-    // ENHANCEMENT: Re-use SecureRandom instance
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
@@ -124,9 +121,53 @@ public class UserServiceImpl implements UserService {
     }
 
     private String generateOtp() {
-        // ENHANCEMENT: Use SecureRandom for cryptographically strong random numbers
         int otpValue = 100000 + this.secureRandom.nextInt(900000);
         return String.valueOf(otpValue);
+    }
+    @Override
+    @Transactional
+    public String forgotPassword(ForgotPasswordRequestDTO requestDTO) {
+
+        User user = userRepository.findByEmail(requestDTO.getEmailOrNumber())
+                .or(() -> userRepository.findByNumber(requestDTO.getEmailOrNumber()))
+                .orElseThrow(() -> new UserException("User not found with this email or number."));
+
+        if (!user.isEnabled()) {
+            throw new UserException("Account is not enabled or verified.");
+        }
+
+        String otp = generateOtp();
+        user.setOtp(otp);
+        user.setOtpExpiry(LocalDateTime.now().plusMinutes(10));
+        userRepository.save(user);
+
+
+        emailService.sendPasswordResetOtpEmail(user.getEmail(), otp);
+
+        return "OTP has been sent to your email for password reset.";
+    }
+
+
+    @Override
+    @Transactional
+    public String resetPassword(ResetPasswordRequestDTO requestDTO) {
+        User user = userRepository.findByEmail(requestDTO.getEmail())
+                .orElseThrow(() -> new UserException("User not found with this email."));
+
+        if (user.getOtp() == null || !user.getOtp().equals(requestDTO.getOtp())) {
+            throw new UserException("Invalid OTP.");
+        }
+
+        if (user.getOtpExpiry().isBefore(LocalDateTime.now())) {
+            throw new UserException("OTP has expired. Please request a new one.");
+        }
+
+        user.setPassword(passwordEncoder.encode(requestDTO.getNewPassword()));
+        user.setOtp(null);
+        user.setOtpExpiry(null);
+        userRepository.save(user);
+
+        return "Password has been reset successfully.";
     }
 
     @Override
@@ -140,7 +181,6 @@ public class UserServiceImpl implements UserService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Find user to check if they are enabled
         User user = userRepository.findByEmail(authentication.getName())
                 .or(() -> userRepository.findByNumber(authentication.getName()))
                 .orElseThrow(() -> new UserException("Error fetching user details after authentication."));

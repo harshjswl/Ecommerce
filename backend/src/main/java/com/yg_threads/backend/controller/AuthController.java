@@ -36,6 +36,18 @@ public class AuthController {
         String message = userService.resendOtp(requestDTO.getEmail());
         return ResponseEntity.ok(Map.of("message", message));
     }
+    @PostMapping("/forgot-password")
+    // MODIFIED: Use the new ForgotPasswordRequestDTO
+    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequestDTO requestDTO) {
+        String message = userService.forgotPassword(requestDTO);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequestDTO requestDTO) {
+        String message = userService.resetPassword(requestDTO);
+        return ResponseEntity.ok(Map.of("message", message));
+    }
 
     // You can add /login endpoint here later
 }

@@ -18,4 +18,11 @@ public class EmailService {
         message.setText("Your OTP for YG-Threads registration is: " + otp + "\nIt is valid for 10 minutes.");
         mailSender.send(message);
     }
+    public void sendPasswordResetOtpEmail(String to, String otp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Your Password Reset Code");
+        message.setText("Your OTP for resetting your password is: " + otp + "\nIt is valid for 10 minutes.");
+        mailSender.send(message);
+    }
 }
